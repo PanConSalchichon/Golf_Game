@@ -4,6 +4,10 @@ import android.gesture.GestureStroke
 import com.example.mini_golf.model.Ball
 import com.example.mini_golf.model.GolfHole
 
+object SwingConstants{
+    const val SWING_THRESHOLD = 18f
+    const val  MAX_SWING_MAGNITUDE = 110f
+}
 data class SwingInput (
     val magnitude: Float,
     val dx: Float,

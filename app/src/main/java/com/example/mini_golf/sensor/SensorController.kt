@@ -6,13 +6,15 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.util.Log
+import com.example.mini_golf.physics.SwingConstants
 import com.example.mini_golf.physics.SwingInput
 import kotlin.math.sqrt
 
 class SensorController(context: Context) : SensorEventListener {
+
     companion object {
-        private const val SWING_THRESHOLD = 18f
         private const val COOLDOWN_MS = 800L
+        private const val SWING_WINDOW_MS = 300L
     }
 
     private val sensorManager =
@@ -22,6 +24,12 @@ class SensorController(context: Context) : SensorEventListener {
 
     private var lastSwingTime = 0L
     private var swingListener: ((SwingInput) -> Unit)? = null
+
+    private var isTracking = false
+    private var trackingStartTime = 0L
+    private var peakMagnitude = 0f
+    private var peakDx = 0f
+    private var peakDy = 0f
 
     fun setOnSwingDetectedListener(listener: (SwingInput) -> Unit) {
         swingListener = listener
@@ -43,18 +51,32 @@ class SensorController(context: Context) : SensorEventListener {
         val x = event.values[0]
         val y = event.values[1]
         val z = event.values[2]
-
         val magnitude = sqrt(x * x + y * y + z * z)
         val now = System.currentTimeMillis()
 
-        val isStrongEnough = magnitude > SWING_THRESHOLD
-        val cooldownPassed = now - lastSwingTime > COOLDOWN_MS
+        if (!isTracking) {
+            val cooldownPassed = now - lastSwingTime > COOLDOWN_MS
+            if (magnitude > SwingConstants.SWING_THRESHOLD && cooldownPassed) {
+                isTracking = true
+                trackingStartTime = now
+                peakMagnitude = magnitude
+                peakDx = x
+                peakDy = y
+            }
+        } else {
+            if (magnitude > peakMagnitude) {
+                peakMagnitude = magnitude
+                peakDx = x
+                peakDy = y
+            }
 
-        if (isStrongEnough && cooldownPassed) {
-            lastSwingTime = now
-            val input = SwingInput(magnitude = magnitude, dx = x, dy = y)
-            swingListener?.invoke(input)
-            Log.d("SensorController", "Swing detected: magnitude=$magnitude dx=$x dy=$y")
+            if (now - trackingStartTime >= SWING_WINDOW_MS) {
+                isTracking = false
+                lastSwingTime = now
+                val input = SwingInput(magnitude = peakMagnitude, dx = peakDx, dy = peakDy)
+                swingListener?.invoke(input)
+                Log.d("SensorController", "Swing detected: peakMagnitude=$peakMagnitude dx=$peakDx dy=$peakDy")
+            }
         }
     }
 
