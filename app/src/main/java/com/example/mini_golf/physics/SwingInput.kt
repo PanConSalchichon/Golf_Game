@@ -7,6 +7,7 @@ import com.example.mini_golf.model.GolfHole
 object SwingConstants{
     const val SWING_THRESHOLD = 18f
     const val  MAX_SWING_MAGNITUDE = 110f
+    const val  MAX_SHOT_DISTANCE = 300f
 }
 data class SwingInput (
     val magnitude: Float,

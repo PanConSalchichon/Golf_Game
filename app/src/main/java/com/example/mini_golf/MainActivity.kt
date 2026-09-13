@@ -31,7 +31,9 @@ class MainActivity : AppCompatActivity() {
 
         sensorController.setOnSwingDetectedListener { swingInput ->
             val result = physicsEngine.calculateShot(swingInput, testBall, testHole)
-            Log.d("MainActivity", "magnitude=${swingInput.magnitude} force=${result.force}")
+            Log.d("MainActivity", "newX=${result.newX} newY=${result.newY} holeCompleted=${result.holeCompleted}")
+            testBall.x = result.newX
+            testBall.y = result.newY
         }
     }
     override fun onResume(){
