@@ -7,41 +7,70 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-class GolfPhysicsEngineImpl : GolfPhysicsEngine {
+data class PhysicsResult(
+    val isValidSwing: Boolean,
+    val force: Float,
+    val angle: Float,
+    val newBall: Ball,
+    val isHoleCompleted: Boolean
+)
 
-    override fun calculateShot(input: SwingInput, ball: Ball, hole: GolfHole): ShotResult {
-        val force = calculateForce(input.magnitude)
-        val direction = calculateDirection(input.dx, input.dy)
-        val distance = force * SwingConstants.MAX_SHOT_DISTANCE
-        val newX = ball.x + cos(direction) * distance
-        val newY = ball.y + sin(direction) * distance
+class GolfPhysicsEngineImpl(
+    private val minSwingThreshold: Float = 12.0f,
+    private val maxForce: Float = 300.0f
+) {
 
-        val holeCompleted = isBallInHole(newX, newY, hole)
+    fun calculateSwingForce(accelX: Float, accelY: Float, accelZ: Float): Float {
+        val sumSquares = (accelX * accelX + accelY * accelY + accelZ * accelZ).toDouble()
+        val totalAcceleration = sqrt(sumSquares).toFloat()
 
-        return ShotResult(
-            validStroke = true,
+        return if (totalAcceleration >= minSwingThreshold) {
+            val calculatedForce = totalAcceleration * 15.0f
+            if (calculatedForce > maxForce) maxForce else calculatedForce
+        } else {
+            0.0f
+        }
+    }
+
+    fun processSwing(
+        accelX: Float,
+        accelY: Float,
+        accelZ: Float,
+        currentBall: Ball,
+        hole: GolfHole
+    ): PhysicsResult {
+        val force = calculateSwingForce(accelX, accelY, accelZ)
+
+        if (force <= 0.0f) {
+            return PhysicsResult(
+                isValidSwing = false,
+                force = 0.0f,
+                angle = 0.0f,
+                newBall = currentBall,
+                isHoleCompleted = false
+            )
+        }
+
+        val angle = atan2(accelY.toDouble(), accelX.toDouble()).toFloat()
+        val deltaX = force * cos(angle.toDouble()).toFloat()
+        val deltaY = force * sin(angle.toDouble()).toFloat()
+
+        val newX = currentBall.x + deltaX
+        val newY = currentBall.y + deltaY
+
+        val dx = (hole.x - newX).toDouble()
+        val dy = (hole.y - newY).toDouble()
+        val distanceToHole = sqrt(dx * dx + dy * dy).toFloat()
+
+        val isCompleted = distanceToHole <= hole.radius
+        val updatedBall = currentBall.copy(x = newX, y = newY)
+
+        return PhysicsResult(
+            isValidSwing = true,
             force = force,
-            directionRadians = direction,
-            newX = newX,
-            newY = newY,
-            holeCompleted = holeCompleted
+            angle = angle,
+            newBall = updatedBall,
+            isHoleCompleted = isCompleted
         )
-    }
-
-    private fun calculateForce(magnitude: Float): Float {
-        val range = SwingConstants.MAX_SWING_MAGNITUDE - SwingConstants.SWING_THRESHOLD
-        val rawForce = (magnitude - SwingConstants.SWING_THRESHOLD) / range
-        return rawForce.coerceIn(0f, 1f)
-    }
-
-    private fun calculateDirection(dx: Float, dy: Float): Float {
-        return atan2(dy, dx)
-    }
-
-    private fun isBallInHole(ballX: Float, ballY: Float, hole: GolfHole): Boolean {
-        val dx = ballX - hole.x
-        val dy = ballY - hole.y
-        val distance = sqrt(dx * dx + dy * dy)
-        return distance <= hole.radius
     }
 }

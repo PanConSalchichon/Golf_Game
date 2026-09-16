@@ -9,10 +9,10 @@ object SwingConstants{
     const val  MAX_SWING_MAGNITUDE = 110f
     const val  MAX_SHOT_DISTANCE = 300f
 }
-data class SwingInput (
-    val magnitude: Float,
-    val dx: Float,
-    val dy: Float
+data class SwingInput(
+    val ax: Float,
+    val ay: Float,
+    val az: Float
 )
 
 data class ShotResult(
